@@ -5,7 +5,7 @@ import numpy as np
 
 
 def build_model(is_cuda):
-    net = cv2.dnn.readNet("yolov5_100.onnx")
+    net = cv2.dnn.readNet("models/yolov5_100.onnx")
     if is_cuda:
         print("Attempty to use CUDA")
         net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
@@ -22,7 +22,8 @@ INPUT_HEIGHT = 640
 SCORE_THRESHOLD = 0.2
 NMS_THRESHOLD = 0.4
 CONFIDENCE_THRESHOLD = 0.4
-SOURCE = "people_on_street.mp4"
+NAME = 'people_on_street'
+SOURCE = f"videos/{NAME}.mp4"
 
 def detect(image, net):
     blob = cv2.dnn.blobFromImage(image, 1 / 255.0, (INPUT_WIDTH, INPUT_HEIGHT), swapRB=True, crop=False)
@@ -118,7 +119,7 @@ w = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
 h = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
 # Tworzenie obiektu do zapisu filmu
-save_path = f'{SOURCE}_blured.mp4'
+save_path = f'save/{NAME}_blured.mp4'
 vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
 
 blur_ratio = 50

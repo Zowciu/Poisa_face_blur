@@ -22,7 +22,7 @@ INPUT_HEIGHT = 640
 SCORE_THRESHOLD = 0.2
 NMS_THRESHOLD = 0.4
 CONFIDENCE_THRESHOLD = 0.4
-NAME = 'people_on_street'
+NAME = 'people_walking_in_park'
 SOURCE = f"videos/{NAME}.mp4"
 
 def detect(image, net):

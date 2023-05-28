@@ -32,7 +32,7 @@ def detect(image, net):
 
 
 def load_capture():
-    capture = cv2.VideoCapture("people_on_street.mp4")
+    capture = cv2.VideoCapture("people_in_park.mp4")
     return capture
 
 

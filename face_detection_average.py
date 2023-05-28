@@ -32,7 +32,8 @@ def detect(image, net):
 
 
 def load_capture():
-    capture = cv2.VideoCapture("people_on_street.mp4")
+    source = "people_in_park.mp4"
+    capture = cv2.VideoCapture(source)
     return capture
 
 
@@ -123,6 +124,9 @@ vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w
 
 blur_ratio = 50
 
+num_frames = 5  # Liczba klatek do uśrednienia
+detection_threshold = 0.5  # Próg detekcji
+detections_buffer = []
 while True:
 
     _, frame = capture.read()
@@ -132,8 +136,36 @@ while True:
 
     inputImage = format_yolov5(frame)
     outs = detect(inputImage, net)
-
     class_ids, confidences, boxes = wrap_detection(inputImage, outs[0])
+
+    if len(detections_buffer) >= num_frames:
+        detections_buffer.pop(0)  # Usuwanie najstarszej klatki z bufora
+
+    detections_buffer.append((class_ids, confidences, boxes))  # Dodawanie aktualnej klatki do bufora
+
+    # Obliczanie uśrednionych wyników detekcji
+    averaged_class_ids = []
+    averaged_confidences = []
+    averaged_boxes = []
+
+    for i in range(len(class_ids)):
+        class_id_sum = 0
+        confidence_sum = 0
+        box_sum = np.zeros(4)
+
+        for detections in detections_buffer:
+            class_id_sum += detections[0][i]
+            confidence_sum += detections[1][i]
+            box_sum += detections[2][i]
+
+        averaged_class_id = int(class_id_sum / len(detections_buffer))
+        averaged_confidence = confidence_sum / len(detections_buffer)
+        averaged_box = box_sum / len(detections_buffer)
+
+        if averaged_confidence >= detection_threshold:
+            averaged_class_ids.append(averaged_class_id)
+            averaged_confidences.append(averaged_confidence)
+            averaged_boxes.append(averaged_box)
 
     frame_count += 1
     total_frames += 1

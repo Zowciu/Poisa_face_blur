@@ -22,7 +22,7 @@ INPUT_HEIGHT = 640
 SCORE_THRESHOLD = 0.2
 NMS_THRESHOLD = 0.4
 CONFIDENCE_THRESHOLD = 0.4
-
+SOURCE = "people_on_street.mp4"
 
 def detect(image, net):
     blob = cv2.dnn.blobFromImage(image, 1 / 255.0, (INPUT_WIDTH, INPUT_HEIGHT), swapRB=True, crop=False)
@@ -32,7 +32,7 @@ def detect(image, net):
 
 
 def load_capture():
-    capture = cv2.VideoCapture("people_in_park.mp4")
+    capture = cv2.VideoCapture(SOURCE)
     return capture
 
 
@@ -118,7 +118,7 @@ w = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
 h = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
 # Tworzenie obiektu do zapisu filmu
-save_path = 'output.mp4'
+save_path = f'{SOURCE}_blured.mp4'
 vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
 
 blur_ratio = 50

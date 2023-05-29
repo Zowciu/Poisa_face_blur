@@ -2,6 +2,7 @@
 zad.1. Może zostać z  tym zaznaczaniem.(1pkt)
 
 zad.2. Otwórz skrypt 'face_detection-blur.py', następnie w lini 65 kodu, zmieniaj wartość warunku 'if confidence >= 0.4'.
+
 	a) co się dzieje po zwiększeniu a co po zmniejszeniu wartości.(1pkt)
 	b) jaka jest optymalna wartość.(1pkt)
 

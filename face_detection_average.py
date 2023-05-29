@@ -5,7 +5,7 @@ import numpy as np
 
 
 def build_model(is_cuda):
-    net = cv2.dnn.readNet("yolov5_100.onnx")
+    net = cv2.dnn.readNet("models/yolov5_100.onnx")
     if is_cuda:
         print("Attempty to use CUDA")
         net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
@@ -22,7 +22,8 @@ INPUT_HEIGHT = 640
 SCORE_THRESHOLD = 0.2
 NMS_THRESHOLD = 0.4
 CONFIDENCE_THRESHOLD = 0.4
-
+NAME = 'people_walking'
+SOURCE = f"videos/{NAME}.mp4"
 
 def detect(image, net):
     blob = cv2.dnn.blobFromImage(image, 1 / 255.0, (INPUT_WIDTH, INPUT_HEIGHT), swapRB=True, crop=False)
@@ -32,8 +33,7 @@ def detect(image, net):
 
 
 def load_capture():
-    source = "people_in_park.mp4"
-    capture = cv2.VideoCapture(source)
+    capture = cv2.VideoCapture(SOURCE)
     return capture
 
 
@@ -119,14 +119,15 @@ w = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
 h = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
 # Tworzenie obiektu do zapisu filmu
-save_path = 'output.mp4'
+save_path = f'save/{NAME}_average.mp4'
 vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
 
 blur_ratio = 50
 
-num_frames = 5  # Liczba klatek do uśrednienia
-detection_threshold = 0.5  # Próg detekcji
-detections_buffer = []
+NUM_FRAMES = 5
+frame_sum = np.zeros((h, w, 3), dtype=np.float32)
+frame_count = 0
+
 while True:
 
     _, frame = capture.read()
@@ -136,50 +137,37 @@ while True:
 
     inputImage = format_yolov5(frame)
     outs = detect(inputImage, net)
+
     class_ids, confidences, boxes = wrap_detection(inputImage, outs[0])
-
-    if len(detections_buffer) >= num_frames:
-        detections_buffer.pop(0)  # Usuwanie najstarszej klatki z bufora
-
-    detections_buffer.append((class_ids, confidences, boxes))  # Dodawanie aktualnej klatki do bufora
-
-    # Obliczanie uśrednionych wyników detekcji
-    averaged_class_ids = []
-    averaged_confidences = []
-    averaged_boxes = []
-
-    for i in range(len(class_ids)):
-        class_id_sum = 0
-        confidence_sum = 0
-        box_sum = np.zeros(4)
-
-        for detections in detections_buffer:
-            class_id_sum += detections[0][i]
-            confidence_sum += detections[1][i]
-            box_sum += detections[2][i]
-
-        averaged_class_id = int(class_id_sum / len(detections_buffer))
-        averaged_confidence = confidence_sum / len(detections_buffer)
-        averaged_box = box_sum / len(detections_buffer)
-
-        if averaged_confidence >= detection_threshold:
-            averaged_class_ids.append(averaged_class_id)
-            averaged_confidences.append(averaged_confidence)
-            averaged_boxes.append(averaged_box)
 
     frame_count += 1
     total_frames += 1
 
     for (classid, confidence, box) in zip(class_ids, confidences, boxes):
-        color = colors[int(classid) % len(colors)]
-        cv2.rectangle(frame, box, color, 2)
-        cv2.rectangle(frame, (box[0], box[1] - 20), (box[0] + box[2], box[1]), color, -1)
-        cv2.putText(frame, class_list[classid], (box[0], box[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 0))
+        # Przetwarzanie na klatce
 
-        roi = frame[box[1]:box[1] + box[3], box[0]:box[0] + box[2]]
-        blurred_roi = cv2.blur(roi, (blur_ratio, blur_ratio))
-        frame[box[1]:box[1] + box[3], box[0]:box[0] + box[2]] = blurred_roi
+        frame_sum += frame.astype(np.float32)
 
+        if frame_count == NUM_FRAMES:
+            averaged_frame = (frame_sum / NUM_FRAMES).astype(np.uint8)
+
+            inputImage = format_yolov5(averaged_frame)
+            outs = detect(inputImage, net)
+
+            class_ids, confidences, boxes = wrap_detection(inputImage, outs[0])
+
+        for (classid, confidence, box) in zip(class_ids, confidences, boxes):
+            color = colors[int(classid) % len(colors)]
+            cv2.rectangle(frame, box, color, 2)
+            cv2.rectangle(frame, (box[0], box[1] - 20), (box[0] + box[2], box[1]), color, -1)
+            cv2.putText(frame, class_list[classid], (box[0], box[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 0))
+
+            roi = frame[box[1]:box[1] + box[3], box[0]:box[0] + box[2]]
+            blurred_roi = cv2.blur(roi, (blur_ratio, blur_ratio))
+            frame[box[1]:box[1] + box[3], box[0]:box[0] + box[2]] = blurred_roi
+
+            frame_sum = np.zeros((h, w, 3), dtype=np.float32)
+            frame_count = 0
 
     if frame_count >= 30:
         end = time.time_ns()
@@ -187,9 +175,9 @@ while True:
         frame_count = 0
         start = time.time_ns()
 
-    # if fps > 0:
-    #     fps_label = "FPS: %.2f" % fps
-    #     cv2.putText(frame, fps_label, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    if total_frames > 0:
+        fps_label = "FRAME: %.0f" % total_frames
+        cv2.putText(frame, fps_label, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
     cv2.imshow("output", frame)
     vid_writer.write(frame)

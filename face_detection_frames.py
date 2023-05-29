@@ -22,7 +22,7 @@ INPUT_HEIGHT = 640
 SCORE_THRESHOLD = 0.2
 NMS_THRESHOLD = 0.4
 CONFIDENCE_THRESHOLD = 0.4
-NAME = 'people_walking'
+NAME = 'people_walking_in_park'   # tutaj możesz zmienić używane wideo
 SOURCE = f"videos/{NAME}.mp4"
 
 def detect(image, net):
@@ -119,15 +119,15 @@ w = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
 h = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
 # Tworzenie obiektu do zapisu filmu
-save_path = f'save/{NAME}_blured.mp4'
+save_path = f'save/{NAME}_frames.mp4'
 vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
 
-blur_ratio = 50  # zad 4
+blur_ratio = 50
 
-number_of_frames = 5 # zadanie 5
+NUM_FRAMES = 10 # zadanie 6
 
-prev_frames = [None] * number_of_frames
-next_frames = [None] * number_of_frames
+prev_frames = [None] * NUM_FRAMES
+next_frames = [None] * NUM_FRAMES
 
 while True:
     _, frame = capture.read()
@@ -146,17 +146,18 @@ while True:
     frame_count += 1
     total_frames += 1
 
-    for prev_frame in prev_frames:
-        if prev_frame is not None:
-            prev_inputImage = format_yolov5(prev_frame)
-            prev_outs = detect(prev_inputImage, net)
-            prev_class_ids, prev_confidences, prev_boxes = wrap_detection(prev_inputImage, prev_outs[0])
+    # for prev_frame in prev_frames:
+    #     if prev_frame is not None:
+    #         prev_inputImage = format_yolov5(prev_frame)
+    #         prev_outs = detect(prev_inputImage, net)
+    #         prev_class_ids, prev_confidences, prev_boxes = wrap_detection(prev_inputImage, prev_outs[0])
+    #
+    #         for (prev_classid, prev_confidence, prev_box) in zip(prev_class_ids, prev_confidences, prev_boxes):
+    #             if prev_confidence >= CONFIDENCE_THRESHOLD:
+    #                 prev_roi = frame[prev_box[1]:prev_box[1] + prev_box[3], prev_box[0]:prev_box[0] + prev_box[2]]
+    #                 blurred_roi = cv2.blur(prev_roi, (blur_ratio, blur_ratio))
+    #                 frame[prev_box[1]:prev_box[1] + prev_box[3], prev_box[0]:prev_box[0] + prev_box[2]] = blurred_roi
 
-            for (prev_classid, prev_confidence, prev_box) in zip(prev_class_ids, prev_confidences, prev_boxes):
-                if prev_confidence >= CONFIDENCE_THRESHOLD:
-                    prev_roi = frame[prev_box[1]:prev_box[1] + prev_box[3], prev_box[0]:prev_box[0] + prev_box[2]]
-                    blurred_roi = cv2.blur(prev_roi, (blur_ratio, blur_ratio))
-                    frame[prev_box[1]:prev_box[1] + prev_box[3], prev_box[0]:prev_box[0] + prev_box[2]] = blurred_roi
     for next_frame in next_frames:
         if next_frame is not None:
             next_inputImage = format_yolov5(next_frame)

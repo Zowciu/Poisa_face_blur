@@ -1,7 +1,7 @@
 # Poisa_face_blur
 zad.1. Może zostać z  tym zaznaczaniem.(1pkt)
 
-zad.2. Otwórz skrypt 'face_detection-blur.py', następnie w lini 65 kodu, zmieniaj wartość warunku 'if confidence >= 0.4'.
+zad.2. Otwórz skrypt 'face_detection-blur.py', następnie w lini 65 kodu, zmieniaj wartość warunku 'if confidence >= 0.4'(przedział wartości jakie można ustawić to 0-1).
 
 	a) co się dzieje po zwiększeniu a co po zmniejszeniu wartości.(1pkt)
 	b) jaka jest optymalna wartość.(1pkt)

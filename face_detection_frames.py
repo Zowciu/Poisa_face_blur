@@ -101,100 +101,81 @@ def format_yolov5(frame):
     result[0:row, 0:col] = frame
     return result
 
+def main():
+    colors = [(255, 255, 0), (0, 255, 0), (0, 255, 255), (255, 0, 0)]
+    is_cuda = len(sys.argv) > 1 and sys.argv[1] == "cuda"
+    net = build_model(is_cuda)
+    capture = load_capture()
 
-colors = [(255, 255, 0), (0, 255, 0), (0, 255, 255), (255, 0, 0)]
+    start = time.time_ns()
+    frame_count = 0
+    total_frames = 0
+    fps = -1
 
-is_cuda = len(sys.argv) > 1 and sys.argv[1] == "cuda"
+    fps = capture.get(cv2.CAP_PROP_FPS)
+    w = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+    h = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-net = build_model(is_cuda)
-capture = load_capture()
+    save_path = f'save/{NAME}_frames.mp4'
+    vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
 
-start = time.time_ns()
-frame_count = 0
-total_frames = 0
-fps = -1
+    blur_ratio = 50
+    num_frames = 5
+    prev_frames = [None] * num_frames
+    prev_detections = []
 
-fps = capture.get(cv2.CAP_PROP_FPS)
-w = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-h = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    while True:
+        _, frame = capture.read()
+        if frame is None:
+            print("End of stream")
+            break
 
-# Tworzenie obiektu do zapisu filmu
-save_path = f'save/{NAME}_frames.mp4'
-vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+        prev_frames = prev_frames[1:] + [frame]
 
-blur_ratio = 50
+        inputImage = format_yolov5(frame)
+        outs = detect(inputImage, net)
 
-NUM_FRAMES = 10 # zadanie 6
+        class_ids, confidences, boxes = wrap_detection(inputImage, outs[0])
 
-prev_frames = [None] * NUM_FRAMES
-next_frames = [None] * NUM_FRAMES
+        frame_count += 1
+        total_frames += 1
 
-while True:
-    _, frame = capture.read()
-    if frame is None:
-        print("End of stream")
-        break
+        for i, prev_frame in enumerate(prev_frames):
+            if prev_frame is not None:
+                prev_input_image = format_yolov5(prev_frame)
+                prev_outs = detect(prev_input_image, net)
+                prev_class_ids, prev_confidences, prev_boxes = wrap_detection(prev_input_image, prev_outs[0])
 
-    prev_frames = prev_frames[1:] + [frame]
-    next_frames = next_frames[1:] + [frame]
+                for (prev_classid, prev_confidence, prev_box) in zip(prev_class_ids, prev_confidences, prev_boxes):
+                    if prev_confidence >= CONFIDENCE_THRESHOLD:
+                        prev_roi = prev_frame[prev_box[1]:prev_box[1] + prev_box[3], prev_box[0]:prev_box[0] + prev_box[2]]
+                        blurred_roi = cv2.blur(prev_roi, (blur_ratio, blur_ratio))
+                        frame[prev_box[1]:prev_box[1] + prev_box[3], prev_box[0]:prev_box[0] + prev_box[2]] = blurred_roi
+                        prev_detections.append(prev_box)
 
-    inputImage = format_yolov5(frame)
-    outs = detect(inputImage, net)
+        for (classid, confidence, box) in zip(class_ids, confidences, boxes):
+            color = colors[int(classid) % len(colors)]
+            cv2.rectangle(frame, box, color, 2)
+            cv2.rectangle(frame, (box[0], box[1] - 20), (box[0] + box[2], box[1]), color, -1)
+            cv2.putText(frame, class_list[classid], (box[0], box[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 0))
 
-    class_ids, confidences, boxes = wrap_detection(inputImage, outs[0])
+            roi = frame[box[1]:box[1] + box[3], box[0]:box[0] + box[2]]
+            blurred_roi = cv2.blur(roi, (blur_ratio, blur_ratio))
+            frame[box[1]:box[1] + box[3], box[0]:box[0] + box[2]] = blurred_roi
 
-    frame_count += 1
-    total_frames += 1
+        for prev_detection in prev_detections:
+            prev_roi = frame[prev_detection[1]:prev_detection[1] + prev_detection[3], prev_detection[0]:prev_detection[0] + prev_detection[2]]
+            blurred_roi = cv2.blur(prev_roi, (blur_ratio, blur_ratio))
+            frame[prev_detection[1]:prev_detection[1] + prev_detection[3], prev_detection[0]:prev_detection[0] + prev_detection[2]] = blurred_roi
 
-    # for prev_frame in prev_frames:
-    #     if prev_frame is not None:
-    #         prev_inputImage = format_yolov5(prev_frame)
-    #         prev_outs = detect(prev_inputImage, net)
-    #         prev_class_ids, prev_confidences, prev_boxes = wrap_detection(prev_inputImage, prev_outs[0])
-    #
-    #         for (prev_classid, prev_confidence, prev_box) in zip(prev_class_ids, prev_confidences, prev_boxes):
-    #             if prev_confidence >= CONFIDENCE_THRESHOLD:
-    #                 prev_roi = frame[prev_box[1]:prev_box[1] + prev_box[3], prev_box[0]:prev_box[0] + prev_box[2]]
-    #                 blurred_roi = cv2.blur(prev_roi, (blur_ratio, blur_ratio))
-    #                 frame[prev_box[1]:prev_box[1] + prev_box[3], prev_box[0]:prev_box[0] + prev_box[2]] = blurred_roi
+        cv2.imshow("output", frame)
+        vid_writer.write(frame)
+        if cv2.waitKey(1) > -1:
+            print("finished by user")
+            break
 
-    for next_frame in next_frames:
-        if next_frame is not None:
-            next_inputImage = format_yolov5(next_frame)
-            next_outs = detect(next_inputImage, net)
-            next_class_ids, next_confidences, next_boxes = wrap_detection(next_inputImage, next_outs[0])
-
-            for (next_classid, next_confidence, next_box) in zip(next_class_ids, next_confidences, next_boxes):
-                if next_confidence >= CONFIDENCE_THRESHOLD:
-                    next_roi = frame[next_box[1]:next_box[1] + next_box[3], next_box[0]:next_box[0] + next_box[2]]
-                    blurred_roi = cv2.blur(next_roi, (blur_ratio, blur_ratio))
-                    frame[next_box[1]:next_box[1] + next_box[3], next_box[0]:next_box[0] + next_box[2]] = blurred_roi
-
-    for (classid, confidence, box) in zip(class_ids, confidences, boxes):
-        color = colors[int(classid) % len(colors)]
-        cv2.rectangle(frame, box, color, 2)
-        cv2.rectangle(frame, (box[0], box[1] - 20), (box[0] + box[2], box[1]), color, -1)
-        cv2.putText(frame, class_list[classid], (box[0], box[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 0))
-
-        roi = frame[box[1]:box[1] + box[3], box[0]:box[0] + box[2]]
-        blurred_roi = cv2.blur(roi, (blur_ratio, blur_ratio))
-        frame[box[1]:box[1] + box[3], box[0]:box[0] + box[2]] = blurred_roi
+    print("Total frames: " + str(total_frames))
 
 
-    if frame_count >= 30:
-        end = time.time_ns()
-        fps = 1000000000 * frame_count / (end - start)
-        frame_count = 0
-        start = time.time_ns()
-
-    # if fps > 0:
-    #     fps_label = "FPS: %.2f" % fps
-    #     cv2.putText(frame, fps_label, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-
-    cv2.imshow("output", frame)
-    vid_writer.write(frame)
-    if cv2.waitKey(1) > -1:
-        print("finished by user")
-        break
-
-print("Total frames: " + str(total_frames))
+if __name__ == "__main__":
+    main()

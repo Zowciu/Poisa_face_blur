@@ -146,9 +146,9 @@ def main():
             cv2.rectangle(frame, (box[0], box[1] - 20), (box[0] + box[2], box[1]), color, -1)
             cv2.putText(frame, class_list[classid], (box[0], box[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 0))
 
-            roi = frame[box[1]:box[1] + box[3], box[0]:box[0] + box[2]]
-            blurred_roi = cv2.blur(roi, (blur_ratio, blur_ratio))
-            frame[box[1]:box[1] + box[3], box[0]:box[0] + box[2]] = blurred_roi
+#             roi = frame[box[1]:box[1] + box[3], box[0]:box[0] + box[2]]
+#             blurred_roi = cv2.blur(roi, (blur_ratio, blur_ratio))
+#             frame[box[1]:box[1] + box[3], box[0]:box[0] + box[2]] = blurred_roi
 
         if frame_count >= 30:
             end = time.time_ns()

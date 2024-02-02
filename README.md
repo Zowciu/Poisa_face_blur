@@ -1,1 +1,1 @@
-Projek detekcji twarzy i jej anonimizacji
+Anonymization of Faces in Video Recordings
